@@ -20,7 +20,7 @@ Infraestrutura (Set X): Variáveis como Frota de Carros, Telefonia Fixa e Popula
 
 Desenvolvimento (Set Y): O IDHM Educação e IDHM Renda foram os indicadores mais sensíveis à infraestrutura municipal.
 
-1[](CCA/Rplot.png)
+![](CCA/Rplot.png)
 
 ## 🛠️ Tecnologias Utilizadas
 Linguagem R (v4.4+)
