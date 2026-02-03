@@ -1,0 +1,181 @@
+---
+title: "Análise de Correlação Canônica de Indicadores Municipais"
+author: "Gabriel Cardoso"
+lang: pt
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-location: left
+    code-fold: true
+    code-summary: "Exibir código"
+    number-sections: true
+    self-contained: true
+editor: visual
+bibliography: references.bib
+nocite: |
+  @*
+---
+
+# 📊 Resumo do Projeto: Extensão para Correlação Canônica
+
+Este projeto, originalmente focado na identificação de fatores latentes, expande sua fronteira analítica para investigar a interdependência entre conjuntos distintos de indicadores. Após sintetizar a estrutura dos dados via Análise Fatorial, utiliza-se a **Análise de Correlação Canônica (ACC)** para modelar a relação entre o bloco de variáveis de **Infraestrutura e Porte Econômico** e o bloco de **Desenvolvimento Humano e Bem-Estar**.
+
+O objetivo nesta etapa é determinar como a robustez econômica e física de um município brasileiro prediz e se associa ao seu desempenho social. Essa abordagem permite ir além da redução de dados, focando na força da associação entre diferentes domínios da gestão pública e da realidade municipal.
+
+# Análise de Correlação Canônica (ACC)
+
+A **Análise de Correlação Canônica** é uma técnica estatística multivariada avançada que permite examinar a relação entre dois conjuntos de variáveis simultaneamente. Enquanto a regressão múltipla prevê uma única variável dependente a partir de várias independentes, a ACC identifica a máxima correlação possível entre combinações lineares de dois grupos de variáveis ($X$ e $Y$).
+
+O modelo busca criar pares de **Variáveis Canônicas** ($U$ e $V$), que são pontuações compostas que representam cada conjunto original:
+
+$U_1 = a_{1}X_1 + a_{2}X_2 + \dots + a_{p}X_p$
+
+$V_1 = b_{1}Y_1 + b_{2}Y_2 + \dots + b_{q}Y_q$
+
+Neste contexto:
+
+-   $U_k$ e $V_k$: São as variáveis canônicas (ou funções) que maximizam a correlação ($\rho$) entre os dois blocos.
+
+-   **Cargas Canônicas**: Indicam a contribuição de cada variável original (como PIB ou IDH) para a sua respectiva função canônica.
+
+-   **Autoajuste**: O método garante que cada par sucessivo de variáveis canônicas seja independente (ortogonal) dos pares anteriores, permitindo identificar múltiplas "camadas" de relação entre os dados municipais.
+
+# Conjunto de dados
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+setwd("C:/Users/gabriel.cardoso/Desktop/projetos github/PROJETOS COM R/AF")
+```
+
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(readxl)
+library(DT)
+library(ggcorrplot)
+library(corrplot)
+library(CCA)
+library(CCP)
+library(candisc)
+library(rio)
+library(dplyr)
+
+df <- import("BRAZIL_CITIES.csv")
+
+# Inspecionar o dataset
+str(df)
+```
+
+Selecionar variáveis de interesse para ser mais dinâmico
+
+```{r}
+# 1️⃣ Seleção de variáveis numéricas existentes
+variaveis_afe <- c(
+  "IBGE_RES_POP_BRAS",   # população
+  "AREA",                # área do município
+  "GDP",                 # PIB
+  "GDP_CAPITA",          # PIB per capita
+  "IDHM_Renda",          # renda
+  "IDHM_Educacao",       # educação
+  "IDHM_Longevidade",    # longevidade
+  "Cars",                # carros
+  "Motorcycles",         # motos
+  "FIXED_PHONES",        # telefones fixos
+  "PAY_TV"               # TVs
+)
+
+dados_afe <- df %>% dplyr::select(all_of(variaveis_afe))
+```
+
+```{r}
+# 2️⃣ Converter AREA para numérico (tem vírgula no CSV)
+dados_afe$AREA <- as.numeric(gsub(",", "", dados_afe$AREA))
+
+# 3️⃣ Tratar missing
+dados_afe <- dados_afe %>% mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+```
+
+# Visualizar correlações
+
+```{r}
+corrplot(cor(dados_afe), 
+         method = "color", 
+         type = "lower",        # Exibe apenas a parte inferior
+         diag = FALSE,          # Remove a diagonal principal (1.00)
+         tl.col = "black", 
+         tl.cex = 0.8, 
+         tl.srt = 45,           
+         addCoef.col = "white", 
+         number.cex = 0.7)
+```
+
+Observe o bloco azul escuro no canto inferior direito e no canto superior esquerdo. Variáveis como **IBGE_RES_POP**, **GDP (PIB)**, **Cars**, **Fixed_Phones** e **Pay_TV** estão quase que perfeitamente correlacionadas ($r \approx 1$).
+
+-   **O que isso significa:** Elas estão medindo basicamente a mesma coisa: "tamanho da cidade" ou "riqueza total".
+
+# Análise de correlação canônica
+
+Preparação dos Conjuntos de Variáveis ($X$ e $Y$)
+
+No R, precisamos separar as colunas em dois objetos distintos para que a função possa calcular a correlação entre as matrizes.
+
+```{r}
+# Grupo X: Infraestrutura, Porte e Economia
+X <- dados_afe %>% 
+  dplyr::select(IBGE_RES_POP_BRAS, AREA, GDP, Cars, Motorcycles, FIXED_PHONES, PAY_TV)
+
+# Grupo Y: Bem-estar e Desenvolvimento Humano
+Y <- dados_afe %>% 
+  dplyr::select(GDP_CAPITA, IDHM_Renda, IDHM_Educacao, IDHM_Longevidade)
+
+# Escalonamento (opcional, mas recomendado para facilitar a interpretação das cargas)
+X_scale <- scale(X)
+Y_scale <- scale(Y)
+```
+
+Execução da ACC
+
+```{r}
+library(CCA)
+
+# Executando a Análise de Correlação Canônica
+res_cca <- cancor(X_scale, Y_scale)
+
+res_cca
+
+
+```
+
+A análise de variância demonstra que o primeiro par canônico é o principal eixo de conexão entre os domínios, concentrando mais de **71% da variância compartilhada**. Contudo, o coeficiente de determinação ($R^2 = 0.13$) sugere que o 'porte' das cidades brasileiras explica apenas uma fatia moderada dos indicadores de bem-estar social, deixando margem para a influência de fatores locais, geográficos ou políticos que não estão contidos apenas no volume econômico bruto.
+
+# Coeficientes canônicos
+
+```{r}
+coef(res_cca, type = "both", standardize = T)
+```
+
+Os coeficientes canônicos padronizados revelam que a relação entre os blocos é construída de forma complexa. No domínio da infraestrutura, a **Telefonia Fixa** e a **Frota de Veículos** são os indicadores com maior peso relativo para maximizar a correlação com o bloco social. No domínio do desenvolvimento humano, a **Educação** e a **Renda** consolidam-se como os principais componentes da variável canônica social, demonstrando que esses dois indicadores são os que melhor captam a influência exercida pela estrutura econômica e física do município.
+
+# Verficação do ajuste
+
+```{r}
+# Gráfico principal da ACC
+plot(res_cca, main = "Correlação entre os Pares Canônicos", 
+     xlab = "Variável Canônica X (Infraestrutura)", 
+     ylab = "Variável Canônica Y (Desenvolvimento Social)")
+```
+
+Este gráfico valida a hipótese de que o crescimento econômico e a infraestrutura urbana (medida por variáveis como frota de veículos, PIB e serviços) funcionam como um suporte para o avanço social. No entanto, a dispersão dos pontos sugere que a infraestrutura é uma condição necessária, mas não suficiente, para garantir o bem-estar, indicando que outros fatores (como gestão pública e eficiência de gastos) também jogam um papel crucial no IDHM das cidades.
+
+```{r}
+# Gerando o HE Plot focado nas variáveis do Grupo X (Infraestrutura)
+heplot(res_cca, 
+       col = c("red", "black"), 
+       var.vectors = "X", 
+       main = "HE Plot: Influência das Variáveis de Infraestrutura (X)")
+```
+
+A análise integrada dos scores e do gráfico HE revela que o desenvolvimento social dos municípios brasileiros está intrinsecamente ligado à escala urbana e ao acesso a serviços. A forte convergência de vetores como frota de veículos e telefonia fixa no HE Plot demonstra que a infraestrutura de serviços é o principal preditor do bem-estar capturado pelo modelo. No entanto, a dispersão observada no gráfico de scores (0,36) sugere que, embora a riqueza econômica (PIB) e o porte populacional ajudem a alavancar os índices sociais, eles não são os únicos determinantes, havendo espaço para a influência de políticas públicas locais.
+
+# Conclusão
+
+Em suma, os dados sugerem que a **escala urbana** (população e serviços) é um motor potente para o desenvolvimento social, mas não é um destino garantido. O modelo canônico demonstrou que a "receita" para o sucesso municipal brasileiro envolve a conversão da infraestrutura de base em ativos de capital humano (Renda e Educação). Este trabalho oferece uma base sólida para gestores identificarem que o fortalecimento da infraestrutura urbana é, na verdade, um investimento direto nos índices de desenvolvimento humano da população.
