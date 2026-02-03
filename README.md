@@ -1,6 +1,6 @@
 # Análise de Correlação Canônica: Infraestrutura vs. Desenvolvimento Humano nos Municípios Brasileiros
 
-ACESSE[https://github.com/gabrielcardoso-estatistico/analise_CCA.git]
+![ACESSE](https://github.com/gabrielcardoso-estatistico/analise_CCA.git)
 
 📌 Sobre o Projeto
 Este projeto aplica técnicas de estatística multivariada para investigar a relação entre o porte/infraestrutura urbana e os índices de desenvolvimento social dos municípios brasileiros. A análise utiliza Análise de Correlação Canônica (ACC) para identificar como variáveis de economia e serviço impactam diretamente o IDHM.
